@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/AFML.iml" filepath="$PROJECT_DIR$/.idea/AFML.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../cqrlib/.idea/cqrlib.iml" filepath="$PROJECT_DIR$/../cqrlib/.idea/cqrlib.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../mlfinlab/.idea/mlfinlab.iml" filepath="$PROJECT_DIR$/../mlfinlab/.idea/mlfinlab.iml" />
+    </modules>
+  </component>
+</project>
