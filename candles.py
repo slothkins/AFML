@@ -19,3 +19,22 @@ mpf.plot(
     mav=(5, 10),  # Add moving averages with window sizes (5 and 10)
     volume=True  # Show volume plot
 )
+
+# Load the volume bars data
+volume_bars_df = pd.read_hdf("volume_bars.h5", key="volume_bars")
+
+# Convert the "time" column to datetime if it's not already
+volume_bars_df["time"] = pd.to_datetime(volume_bars_df["time"])
+
+# Set the "time" column as the index (required by mplfinance)
+volume_bars_df.set_index("time", inplace=True)
+
+# Plot the candlestick chart for volume bars
+mpf.plot(
+    volume_bars_df,
+    type="candle",  # Use candlestick style
+    style="yahoo",  # Predefined style
+    title="Volume Bars Candlestick Chart",
+    mav=(5, 10),  # Add moving averages with window sizes (5 and 10)
+    volume=True  # Show volume plot
+)

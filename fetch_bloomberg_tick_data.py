@@ -109,14 +109,14 @@ def save_to_hdf5(df, filename="tick_data.h5", key="tick_data"):
 # Example usage
 if __name__ == "__main__":
     security = "ESZ4 Index"  # Example ticker
-    start_date = datetime(2024, 11, 15)  # Start date
-    end_date = datetime(2024, 11, 22)  # End date
+    start_date = datetime(2024, 12, 15)  # Start date
+    end_date = datetime(2024, 12, 19)  # End date
 
     # Fetch tick data (trade prices and sizes) for the date range
     df = fetch_tick_data_between_dates(security, start_date, end_date)
     if df is not None:
         print(df)
-        df.to_csv("ESZ4_tick_data15nov22nov.csv", index=False)  # Save to CSV for further analysis
+        df.to_csv("ESZ4_tick_data.csv", index=False)  # Save to CSV for further analysis
         save_to_hdf5(df)
     else:
         print("Failed to fetch tick data.")
