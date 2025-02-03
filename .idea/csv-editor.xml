@@ -17,7 +17,7 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="\ESZ4_tick_data.csv">
+        <entry key="/Sample_data/tick_bars.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
