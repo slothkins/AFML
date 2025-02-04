@@ -1,4 +1,5 @@
 import pandas as pd
+from tqdm import tqdm
 
 
 def create_tick_bars(df, tick_threshold=10000):
@@ -16,7 +17,7 @@ def create_tick_bars(df, tick_threshold=10000):
     tick_count = 0
     ohlc = {"open": None, "high": None, "low": None, "close": None, "volume": 0}
 
-    for i, row in df.iterrows():
+    for i, row in tqdm(df.iterrows(), total=len(df), desc="Creating Tick Bars"):
         price = row["price"]
         volume = row["size"]
 
@@ -42,11 +43,6 @@ def create_tick_bars(df, tick_threshold=10000):
     return tick_bars_df
 
 
-# Load tick data
-df = pd.read_hdf("concatenated_data.h5")
-
-# Generate tick bars
-tick_bars_df = create_tick_bars(df, tick_threshold=10000)
 
 
 # Generate volume bars
@@ -65,7 +61,7 @@ def create_volume_bars(df, volume_threshold=200000):
     cumulative_volume = 0
     ohlc = {"open": None, "high": None, "low": None, "close": None, "volume": 0}
 
-    for i, row in df.iterrows():
+    for i, row in tqdm(df.iterrows(), total=len(df), desc="Creating Volume Bars"):
         price = row["price"]
         volume = row["size"]
 
@@ -90,19 +86,16 @@ def create_volume_bars(df, volume_threshold=200000):
     volume_bars_df = pd.DataFrame(bars, columns=["time", "open", "high", "low", "close", "volume"])
     return volume_bars_df
 
-
-volume_bars_df = create_volume_bars(df, volume_threshold=200000)
+# Load tick data
+df = pd.read_hdf("tick_data/concat_sorted.h5", key="concat_sorted", mode="r")
+# Generate tick bars
+tick_bars_df = create_tick_bars(df, tick_threshold=10000)
 
 # Save tick bars to HDF5
-tick_bars_df.to_hdf("tick_bars2.h5", key="tick_bars", mode="w", format="table")
+tick_bars_df.to_hdf("tick_data/bars/tick_bars.h5", key="tick_bars", mode="w", format="table")
+
+# Generate volume bars
+volume_bars_df = create_volume_bars(df, volume_threshold=100000)
 
 # Save volume bars to HDF5
-volume_bars_df.to_hdf("volume_bars.h5", key="volume_bars", mode="w", format="table")
-
-# Display the tick bars
-import ace_tools_open as tools
-
-tools.display_dataframe_to_user(name="Tick Bars Data", dataframe=tick_bars_df)
-
-# Display the volume bars
-tools.display_dataframe_to_user(name="Volume Bars Data", dataframe=volume_bars_df)
+volume_bars_df.to_hdf("tick_data/bars/volume_bars.h5", key="volume_bars", mode="w", format="table")

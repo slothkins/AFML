@@ -24,6 +24,48 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="$PROJECT_DIR$/../mlfinlab/mlfinlab/datasets/data/dollar_bar_sample.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/../mlfinlab/mlfinlab/datasets/data/tick_data.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/../mlfinlab/mlfinlab/tests/test_data/dollar_bar_sample.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/../mlfinlab/mlfinlab/tests/test_data/imbalance_sample_data.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/../mlfinlab/mlfinlab/tests/test_data/tick_data.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/../mlfinlab/mlfinlab/tests/test_data/tick_data_time_bars.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
       </map>
     </option>
   </component>
