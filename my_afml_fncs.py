@@ -31,6 +31,14 @@ def get_previous_dates(close_prices):
         index=close_prices.index[-is_valid.sum():]
     )
 
+def getDailyVol(close, span=100):
+    df0=close.index.searchsorted(close.index-pd.Timedelta(days=1))
+    df0=df0[df0>0]
+    df0=pd.Series(close.index[df0-1],index=close.index[close.shape[0]-df0.shape[0]:])
+    df0=close.loc[df0.index]/close.loc[df0.values].values-1
+    df0=df0.ewm(span=span).std()
+    return df0
+
 def get_daily_volatility(close_prices, span=100):
     sorted_close = close_prices.sort_index()
     previous_dates = get_previous_dates(sorted_close)
@@ -38,30 +46,44 @@ def get_daily_volatility(close_prices, span=100):
     volatility = daily_returns.ewm(span=span).std()
     return volatility
 
-def getTEvents(gRaw,h):
+def getVb(data,events):
+    t1 = data.index.searchsorted(events + pd.Timedelta(days=1))
+    t1 = t1[t1 < data.shape[0]]
+    t1 = pd.Series(data.index[t1], index=events[:t1.shape[0]])
+    return t1
+
+def getTEvents(gRaw,h):          ###cusum filetr
     tEvents,sPos,sNeg=[],0,0
-    h_abs=h*gRaw
+    # h_abs=h*gRaw
     diff=gRaw.diff()
     for i in diff.index[1:]:
         sPos,sNeg=max(0,sPos+diff.loc[i]),min(0,sNeg+diff.loc[i])
-        if sNeg<-h_abs[i]:
+        if sNeg<-h:
             sNeg=0
             tEvents.append(i)
-        elif sPos>h_abs[i]:
+        elif sPos>h:
             sPos=0
             tEvents.append(i)
     return pd.DatetimeIndex(tEvents)
 
 def applyPtSlOnT1(close, events, ptSl, molecule):
+    # print(molecule)
     # apply stop loss/profit taking, if it takes place before t1 (end of event)
     events_ = events.loc[molecule]
     out = events_[['t1']].copy(deep=True)
     if ptSl[0] > 0:
+        # print(">0)")
+        # print("pstl[0] is:",ptSl[0])
         pt = ptSl[0] * events_['trgt']
+        # print("pt is:",pt)
     else:
         pt = pd.Series(index=events.index)  # NaNs
+        print(pt)
     if ptSl[1] > 0:
+        # print("<1)")
+        # print("ptsl[1] is:",ptSl[1])
         sl = -ptSl[1] * events_['trgt']
+        # print("pt is:",pt)
     else:
         sl = pd.Series(index=events.index)  # NaNs
     for loc, t1 in events_['t1'].fillna(close.index[-1]).items():
@@ -73,6 +95,7 @@ def applyPtSlOnT1(close, events, ptSl, molecule):
 
 def getEvents(close,tEvents,ptSl,trgt,minRet,numThreads,t1=False):
     #1) get target
+    trgt=trgt.reindex(tEvents,method='bfill')
     trgt=trgt.loc[tEvents]
     trgt=trgt[trgt>minRet] # minRet
     #2) get t1 (max holding period)
@@ -123,6 +146,7 @@ def mpPandasObj(func,pdObj,numThreads=24,mpBatches=1,linMols=True,**kargs):
         job={pdObj[0]:pdObj[1][parts[i-1]:parts[i]],'func':func}
         job.update(kargs)
         jobs.append(job)
+        # print("job ",i," of ",len(parts)," done")
     if numThreads==1:out=processJobs_(jobs)
     else:out=processJobs(jobs,numThreads=numThreads)
     if isinstance(out[0],pd.DataFrame):df0=pd.DataFrame()
@@ -134,6 +158,7 @@ def mpPandasObj(func,pdObj,numThreads=24,mpBatches=1,linMols=True,**kargs):
 
 def processJobs_(jobs):
     # Run jobs sequentially, for debugging
+    print("Running processJobs_")
     out=[]
     for job in jobs:
         out_=expandCall(job)
@@ -141,6 +166,7 @@ def processJobs_(jobs):
     return out
 
 def reportProgress(jobNum,numJobs,time0,task):
+
     # Report progress as asynch jobs are completed
     msg=[float(jobNum)/numJobs,(time.time()-time0)/60.]
     msg.append(msg[1]*(1/msg[0]-1))
@@ -153,6 +179,7 @@ def reportProgress(jobNum,numJobs,time0,task):
 
 def processJobs(jobs,task=None,numThreads=24):
     # Run in parallel.
+    print("Running processJobs")
     # jobs must contain a ’func’ callback, for expandCall
     if task is None:task=jobs[0]['func'].__name__
     pool=mp.Pool(processes=numThreads)
@@ -160,6 +187,7 @@ def processJobs(jobs,task=None,numThreads=24):
     # Process asynchronous output, report progress
     for i,out_ in enumerate(outputs,1):
         out.append(out_)
+        print(i)
         reportProgress(i,len(jobs),time0,task)
     pool.close();pool.join() # this is needed to prevent memory leaks
     return out
@@ -169,4 +197,15 @@ def expandCall(kargs):
     func=kargs['func']
     del kargs['func']
     out=func(** kargs)
+    return out
+
+def getBins(events,close):
+    #1) prices aligned with events
+    events_=events.dropna(subset=['t1'])
+    px=events_.index.union(events_['t1'].values).drop_duplicates()
+    px=close.reindex(px,method='bfill')
+    #2) create out object
+    out=pd.DataFrame(index=events_.index)
+    out['ret']=px.loc[events_['t1'].values].values/px.loc[events_.index]-1
+    out['bin']=np.sign(out['ret'])
     return out
