@@ -39,12 +39,12 @@ def getDailyVol(close, span=100):
     df0=df0.ewm(span=span).std()
     return df0
 
-def get_daily_volatility(close_prices, span=100):
-    sorted_close = close_prices.sort_index()
-    previous_dates = get_previous_dates(sorted_close)
-    daily_returns = sorted_close.loc[previous_dates.index] / sorted_close.loc[previous_dates.values].values - 1
-    volatility = daily_returns.ewm(span=span).std()
-    return volatility
+# def get_daily_volatility(close_prices, span=100):
+#     sorted_close = close_prices.sort_index()
+#     previous_dates = get_previous_dates(sorted_close)
+#     daily_returns = sorted_close.loc[previous_dates.index] / sorted_close.loc[previous_dates.values].values - 1
+#     volatility = daily_returns.ewm(span=span).std()
+#     return volatility
 
 def getVb(data,events):
     t1 = data.index.searchsorted(events + pd.Timedelta(days=1))
@@ -54,7 +54,7 @@ def getVb(data,events):
 
 def getTEvents(gRaw,h):          ###cusum filetr
     tEvents,sPos,sNeg=[],0,0
-    # h_abs=h*gRaw
+    h=h*gRaw.mean()
     diff=gRaw.diff()
     for i in diff.index[1:]:
         sPos,sNeg=max(0,sPos+diff.loc[i]),min(0,sNeg+diff.loc[i])
@@ -78,7 +78,7 @@ def applyPtSlOnT1(close, events, ptSl, molecule):
         # print("pt is:",pt)
     else:
         pt = pd.Series(index=events.index)  # NaNs
-        print(pt)
+        # print(pt)
     if ptSl[1] > 0:
         # print("<1)")
         # print("ptsl[1] is:",ptSl[1])
@@ -93,21 +93,37 @@ def applyPtSlOnT1(close, events, ptSl, molecule):
         out.loc[loc, 'pt'] = df0[df0 > pt[loc]].index.min()  # earliest profit taking.
     return out
 
-def getEvents(close,tEvents,ptSl,trgt,minRet,numThreads,t1=False):
+# def getEvents(close,tEvents,ptSl,trgt,minRet,numThreads,t1=False):
+#     #1) get target
+#     trgt=trgt.reindex(tEvents,method='bfill')
+#     trgt=trgt.loc[tEvents]
+#     trgt=trgt[trgt>minRet] # minRet
+#     #2) get t1 (max holding period)
+#     if t1 is False:t1=pd.Series(pd.NaT,index=tEvents)
+#     #3) form events object, apply stop loss on t1
+#     side_=pd.Series(1.,index=trgt.index)
+#     events=pd.concat({'t1':t1,'trgt':trgt,'side':side_}, \
+#                      axis=1).dropna(subset=['trgt'])
+#     df0=mpPandasObj(func=applyPtSlOnT1,pdObj=('molecule',events.index), \
+#                     numThreads=numThreads,close=close,events=events,ptSl=[ptSl,ptSl])
+#     events['t1']=df0.dropna(how='all').min(axis=1) # pd.min ignores nan
+#     events=events.drop('side',axis=1)
+#     return events
+
+def getEvents(close,tEvents,ptSl,trgt,minRet,numThreads,t1=False,side=None):
     #1) get target
-    trgt=trgt.reindex(tEvents,method='bfill')
+    trgt = trgt.reindex(tEvents, method='bfill') #added line
     trgt=trgt.loc[tEvents]
     trgt=trgt[trgt>minRet] # minRet
     #2) get t1 (max holding period)
     if t1 is False:t1=pd.Series(pd.NaT,index=tEvents)
     #3) form events object, apply stop loss on t1
-    side_=pd.Series(1.,index=trgt.index)
-    events=pd.concat({'t1':t1,'trgt':trgt,'side':side_}, \
-                     axis=1).dropna(subset=['trgt'])
-    df0=mpPandasObj(func=applyPtSlOnT1,pdObj=('molecule',events.index), \
-                    numThreads=numThreads,close=close,events=events,ptSl=[ptSl,ptSl])
-    events['t1']=df0.dropna(how='all').min(axis=1) # pd.min ignores nan
-    events=events.drop('side',axis=1)
+    if side is None:side_,ptSl_=pd.Series(1.,index=trgt.index),[ptSl[0],ptSl[0]]
+    else:side_,ptSl_=side.loc[trgt.index],ptSl[:2]
+    events=pd.concat({'t1':t1,'trgt':trgt,'side':side_}, axis=1).dropna(subset=['trgt'])
+    df0=mpPandasObj(func=applyPtSlOnT1,pdObj=('molecule',events.index), numThreads=numThreads,close=close,events=events,ptSl=ptSl_)
+    events['t1'] = df0.dropna(how='all').min(axis=1)  # pd.min ignores nan
+    if side is None: events = events.drop('side', axis=1)
     return events
 
 def linParts(numAtoms,numThreads):
@@ -177,6 +193,31 @@ def reportProgress(jobNum,numJobs,time0,task):
     else:sys.stderr.write(msg+'\n')
     return
 
+def movingAverageCrossover(prices, short_window=20, long_window=50):
+    """
+    ChatGPT generated code:
+    Calculate moving average crossover signals.
+
+    Parameters:
+    - prices (pd.Series): Series of price data.
+    - short_window (int): Window size for the short-term moving average.
+    - long_window (int): Window size for the long-term moving average.
+
+    Returns:
+    - pd.DataFrame: DataFrame with short-term and long-term moving averages and crossover signals.
+    """
+    short_ma = prices.rolling(window=short_window, min_periods=1).mean()
+    long_ma = prices.rolling(window=long_window, min_periods=1).mean()
+
+    signals = pd.DataFrame(index=prices.index)
+    signals['short_ma'] = short_ma
+    signals['long_ma'] = long_ma
+    signals['signal'] = 0
+    signals.loc[short_ma > long_ma, 'signal'] = 1
+    signals.loc[short_ma <= long_ma, 'signal'] = -1
+
+    return pd.DatetimeIndex(signals.index)
+
 def processJobs(jobs,task=None,numThreads=24):
     # Run in parallel.
     print("Running processJobs")
@@ -187,7 +228,7 @@ def processJobs(jobs,task=None,numThreads=24):
     # Process asynchronous output, report progress
     for i,out_ in enumerate(outputs,1):
         out.append(out_)
-        print(i)
+        # print(i)
         reportProgress(i,len(jobs),time0,task)
     pool.close();pool.join() # this is needed to prevent memory leaks
     return out
@@ -199,7 +240,29 @@ def expandCall(kargs):
     out=func(** kargs)
     return out
 
+# def getBins(events,close):
+#     #1) prices aligned with events
+#     events_=events.dropna(subset=['t1'])
+#     px=events_.index.union(events_['t1'].values).drop_duplicates()
+#     px=close.reindex(px,method='bfill')
+#     #2) create out object
+#     out=pd.DataFrame(index=events_.index)
+#     out['ret']=px.loc[events_['t1'].values].values/px.loc[events_.index]-1
+#     out['bin']=np.sign(out['ret'])
+#     out['ret'][out['bin']==0]=0
+#     return out
+
 def getBins(events,close):
+    '''
+    Compute event's outcome (including side information, if provided).
+    events is a DataFrame where:
+    —events.index is event's starttime
+    —events[’t1’] is event's endtime
+    —events[’trgt’] is event's target
+    —events[’side’] (optional) implies the algo's position side
+    Case 1: (’side’ not in events): bin in (-1,1) <—label by price action
+    Case 2: (’side’ in events): bin in (0,1) <—label by pnl (meta-labeling)
+    '''
     #1) prices aligned with events
     events_=events.dropna(subset=['t1'])
     px=events_.index.union(events_['t1'].values).drop_duplicates()
@@ -207,5 +270,17 @@ def getBins(events,close):
     #2) create out object
     out=pd.DataFrame(index=events_.index)
     out['ret']=px.loc[events_['t1'].values].values/px.loc[events_.index]-1
+    if 'side' in events_:out['ret']*=events_['side'] # meta-labeling
     out['bin']=np.sign(out['ret'])
+    if 'side' in events_:out.loc[out['ret']<=0,'bin']=0 # meta-labeling
     return out
+
+def dropLabels(events,minPct=.05):
+    # apply weights, drop labels with insufficient examples
+    while True:
+        df0=events['bin'].value_counts(normalize=True)
+        if df0.min()>minPct or df0.shape[0]<3:break
+        print('dropped label',df0.argmin(),df0.min())
+        events=events[events['bin']!=df0.idxmin()]
+    return events
+
