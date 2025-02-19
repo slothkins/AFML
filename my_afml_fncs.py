@@ -1,6 +1,8 @@
 import sys
 import time
 import datetime as dt
+from unittest import signals
+
 import pandas as pd
 import numpy as np
 import copyreg, types, multiprocessing as mp
@@ -93,23 +95,6 @@ def applyPtSlOnT1(close, events, ptSl, molecule):
         out.loc[loc, 'pt'] = df0[df0 > pt[loc]].index.min()  # earliest profit taking.
     return out
 
-# def getEvents(close,tEvents,ptSl,trgt,minRet,numThreads,t1=False):
-#     #1) get target
-#     trgt=trgt.reindex(tEvents,method='bfill')
-#     trgt=trgt.loc[tEvents]
-#     trgt=trgt[trgt>minRet] # minRet
-#     #2) get t1 (max holding period)
-#     if t1 is False:t1=pd.Series(pd.NaT,index=tEvents)
-#     #3) form events object, apply stop loss on t1
-#     side_=pd.Series(1.,index=trgt.index)
-#     events=pd.concat({'t1':t1,'trgt':trgt,'side':side_}, \
-#                      axis=1).dropna(subset=['trgt'])
-#     df0=mpPandasObj(func=applyPtSlOnT1,pdObj=('molecule',events.index), \
-#                     numThreads=numThreads,close=close,events=events,ptSl=[ptSl,ptSl])
-#     events['t1']=df0.dropna(how='all').min(axis=1) # pd.min ignores nan
-#     events=events.drop('side',axis=1)
-#     return events
-
 def getEvents(close,tEvents,ptSl,trgt,minRet,numThreads,t1=False,side=None):
     #1) get target
     trgt = trgt.reindex(tEvents, method='bfill') #added line
@@ -124,6 +109,38 @@ def getEvents(close,tEvents,ptSl,trgt,minRet,numThreads,t1=False,side=None):
     df0=mpPandasObj(func=applyPtSlOnT1,pdObj=('molecule',events.index), numThreads=numThreads,close=close,events=events,ptSl=ptSl_)
     events['t1'] = df0.dropna(how='all').min(axis=1)  # pd.min ignores nan
     if side is None: events = events.drop('side', axis=1)
+    return events
+
+def getBins(events,close):
+    '''
+    Compute event's outcome (including side information, if provided).
+    events is a DataFrame where:
+    —events.index is event's starttime
+    —events[’t1’] is event's endtime
+    —events[’trgt’] is event's target
+    —events[’side’] (optional) implies the algo's position side
+    Case 1: (’side’ not in events): bin in (-1,1) <—label by price action
+    Case 2: (’side’ in events): bin in (0,1) <—label by pnl (meta-labeling)
+    '''
+    #1) prices aligned with events
+    events_=events.dropna(subset=['t1'])
+    px=events_.index.union(events_['t1'].values).drop_duplicates()
+    px=close.reindex(px,method='bfill')
+    #2) create out object
+    out=pd.DataFrame(index=events_.index)
+    out['ret']=px.loc[events_['t1'].values].values/px.loc[events_.index]-1
+    if 'side' in events_:out['ret']*=events_['side'] # meta-labeling
+    out['bin']=np.sign(out['ret'])
+    if 'side' in events_:out.loc[out['ret']<=0,'bin']=0 # meta-labeling
+    return out
+
+def dropLabels(events,minPct=.05):
+    # apply weights, drop labels with insufficient examples
+    while True:
+        df0=events['bin'].value_counts(normalize=True)
+        if df0.min()>minPct or df0.shape[0]<3:break
+        print('dropped label',df0.argmin(),df0.min())
+        events=events[events['bin']!=df0.idxmin()]
     return events
 
 def linParts(numAtoms,numThreads):
@@ -216,7 +233,8 @@ def movingAverageCrossover(prices, short_window=20, long_window=50):
     signals.loc[short_ma > long_ma, 'signal'] = 1
     signals.loc[short_ma <= long_ma, 'signal'] = -1
 
-    return pd.DatetimeIndex(signals.index)
+    return signals
+    # return pd.DatetimeIndex(signals.index)
 
 def processJobs(jobs,task=None,numThreads=24):
     # Run in parallel.
@@ -240,47 +258,4 @@ def expandCall(kargs):
     out=func(** kargs)
     return out
 
-# def getBins(events,close):
-#     #1) prices aligned with events
-#     events_=events.dropna(subset=['t1'])
-#     px=events_.index.union(events_['t1'].values).drop_duplicates()
-#     px=close.reindex(px,method='bfill')
-#     #2) create out object
-#     out=pd.DataFrame(index=events_.index)
-#     out['ret']=px.loc[events_['t1'].values].values/px.loc[events_.index]-1
-#     out['bin']=np.sign(out['ret'])
-#     out['ret'][out['bin']==0]=0
-#     return out
-
-def getBins(events,close):
-    '''
-    Compute event's outcome (including side information, if provided).
-    events is a DataFrame where:
-    —events.index is event's starttime
-    —events[’t1’] is event's endtime
-    —events[’trgt’] is event's target
-    —events[’side’] (optional) implies the algo's position side
-    Case 1: (’side’ not in events): bin in (-1,1) <—label by price action
-    Case 2: (’side’ in events): bin in (0,1) <—label by pnl (meta-labeling)
-    '''
-    #1) prices aligned with events
-    events_=events.dropna(subset=['t1'])
-    px=events_.index.union(events_['t1'].values).drop_duplicates()
-    px=close.reindex(px,method='bfill')
-    #2) create out object
-    out=pd.DataFrame(index=events_.index)
-    out['ret']=px.loc[events_['t1'].values].values/px.loc[events_.index]-1
-    if 'side' in events_:out['ret']*=events_['side'] # meta-labeling
-    out['bin']=np.sign(out['ret'])
-    if 'side' in events_:out.loc[out['ret']<=0,'bin']=0 # meta-labeling
-    return out
-
-def dropLabels(events,minPct=.05):
-    # apply weights, drop labels with insufficient examples
-    while True:
-        df0=events['bin'].value_counts(normalize=True)
-        if df0.min()>minPct or df0.shape[0]<3:break
-        print('dropped label',df0.argmin(),df0.min())
-        events=events[events['bin']!=df0.idxmin()]
-    return events
 
