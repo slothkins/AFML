@@ -1,6 +1,8 @@
 import pandas as pd
 from tqdm import tqdm
 
+tick_threshold = 10000
+volume_threshold = 100000
 
 def create_tick_bars(df, tick_threshold=10000):
     """
@@ -88,14 +90,17 @@ def create_volume_bars(df, volume_threshold=200000):
 
 # Load tick data
 df = pd.read_hdf("tick_data/concat_sorted.h5", key="concat_sorted", mode="r")
-# Generate tick bars
-tick_bars_df = create_tick_bars(df, tick_threshold=10000)
+
+# Generate tick bars from tick data
+tick_bars_df = create_tick_bars(df, tick_threshold=tick_threshold)
 
 # Save tick bars to HDF5
-tick_bars_df.to_hdf("tick_data/bars/tick_bars.h5", key="tick_bars", mode="w", format="table")
+tick_bars_filename = f"tick_data/bars/tick_bars_{tick_threshold}.h5"
+tick_bars_df.to_hdf(tick_bars_filename, key="tick_bars", mode="w", format="table")
 
-# Generate volume bars
-volume_bars_df = create_volume_bars(df, volume_threshold=100000)
+# Generate volume bars from tick data
+volume_bars_df = create_volume_bars(df, volume_threshold=volume_threshold)
 
 # Save volume bars to HDF5
-volume_bars_df.to_hdf("tick_data/bars/volume_bars.h5", key="volume_bars", mode="w", format="table")
+volume_bars_filename = f"tick_data/bars/volume_bars_{volume_threshold}.h5"
+volume_bars_df.to_hdf(volume_bars_filename, key="volume_bars", mode="w", format="table")
