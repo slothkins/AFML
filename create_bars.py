@@ -1,9 +1,10 @@
 import pandas as pd
 from tqdm import tqdm
 
-tick_threshold = 10000
-volume_threshold = 100000
+tick_threshold = 5000
+volume_threshold = 50000
 
+# Generate tick bars
 def create_tick_bars(df, tick_threshold=10000):
     """
     Creates tick bars from tick data based on a fixed number of ticks per bar.
@@ -43,9 +44,6 @@ def create_tick_bars(df, tick_threshold=10000):
     # Convert to DataFrame
     tick_bars_df = pd.DataFrame(bars, columns=["time", "open", "high", "low", "close", "volume"])
     return tick_bars_df
-
-
-
 
 # Generate volume bars
 def create_volume_bars(df, volume_threshold=200000):
@@ -88,7 +86,7 @@ def create_volume_bars(df, volume_threshold=200000):
     volume_bars_df = pd.DataFrame(bars, columns=["time", "open", "high", "low", "close", "volume"])
     return volume_bars_df
 
-# Load tick data
+# Load sorted tick data
 df = pd.read_hdf("tick_data/concat_sorted.h5", key="concat_sorted", mode="r")
 
 # Generate tick bars from tick data
