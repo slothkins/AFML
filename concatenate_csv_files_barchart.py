@@ -20,7 +20,7 @@ def concat_csv_files(directory):
             print(f"Reading file: {filename}")
 
             # Read the CSV file into a DataFrame
-            data = pd.read_csv(filepath)
+            data = pd.read_csv(filepath,header=0)
 
             # Append the DataFrame to the list
             all_data.append(data)
@@ -38,7 +38,7 @@ def concat_csv_files(directory):
 # Example usage
 if __name__ == "__main__":
     # Directory containing the CSV files
-    csv_directory = "./"  # Replace with your directory path
+    csv_directory = "./tick_data/barchart.com/raw"  # Replace with your directory path
 
     # Concatenate the CSV files
     concatenated_df = concat_csv_files(csv_directory)
@@ -49,9 +49,9 @@ if __name__ == "__main__":
         print(f"Total rows: {len(concatenated_df)}")
 
         # Save the merged DataFrame to a new CSV file
-        concatenated_df.to_csv("concatenated_data.csv", index=False)
-        print("Concatenated data saved to 'concatenated_data.csv'.")
+        concatenated_df.to_csv("./tick_data/barchart.com/concatenated_barchart_data3.csv", index=False)
+        print("Concatenated data saved to 'concatenated_barchart_data3.csv'.")
 
         # Save the merged DataFrame to an HDF5 file
-        concatenated_df.to_hdf("concatenated_data.h5", key="data", mode="w")
-        print("Concatenated data saved to 'concatenated_data.h5'.")
+        concatenated_df.to_hdf("./tick_data/barchart.com/concatenated_barchart_data3.h5", key="data", mode="w")
+        print("Concatenated data saved to 'concatenated_barchart_data3.h5'.")
