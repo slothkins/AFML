@@ -54,10 +54,11 @@ def getVb(data,events):
     t1 = pd.Series(data.index[t1], index=events[:t1.shape[0]])
     return t1
 
-def getTEvents(gRaw,h):          ###cusum filetr
+def getTEvents(gRaw,h):          ###cusum filter
     tEvents,sPos,sNeg=[],0,0
-    h=h*gRaw.mean()
-    diff=gRaw.diff()
+    # h=h*gRaw.mean()
+    diff=gRaw.pct_change()
+    # diff=gRaw
     for i in diff.index[1:]:
         sPos,sNeg=max(0,sPos+diff.loc[i]),min(0,sNeg+diff.loc[i])
         if sNeg<-h:

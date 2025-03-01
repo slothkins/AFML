@@ -38,13 +38,6 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="/volume_bars_barchart.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
       </map>
     </option>
   </component>
