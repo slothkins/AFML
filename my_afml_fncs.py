@@ -34,12 +34,39 @@ def get_previous_dates(close_prices):
     )
 
 def getDailyVol(close, span=100):
-    df0=close.index.searchsorted(close.index-pd.Timedelta(days=1))
-    df0=df0[df0>0]
-    df0=pd.Series(close.index[df0-1],index=close.index[close.shape[0]-df0.shape[0]:])
-    df0=close.loc[df0.index]/close.loc[df0.values].values-1
-    df0=df0.ewm(span=span).std()
-    return df0
+    """
+    Calculate daily volatility using an Exponentially Weighted Moving Standard Deviation.
+
+    CHECK FOR DULPICATES!!!!!!!!!!
+
+    Parameters:
+    close (pd.Series): Time series of prices with a DatetimeIndex.
+    span (int): The span of the EWM (exponentially weighted mean).
+
+    Returns:
+    pd.Series: Daily volatility values.
+    """
+
+    # Ensure the input series is sorted by time
+    close = close.sort_index()
+    if not isinstance(close.index, pd.DatetimeIndex):
+        raise ValueError("`close` must have a DatetimeIndex.")
+
+    # Calculate time delta (1-day difference)
+    df0 = close.index.searchsorted(close.index - pd.Timedelta(days=1))
+    df0 = df0[df0 > 0]  # Filter valid indices
+
+    # Handle potential mismatches in indices
+    try:
+        df0 = pd.Series(close.index[df0 - 1], index=close.index[close.shape[0] - df0.shape[0]:])
+        # Calculate returns over the 1-day window
+        daily_returns = close.loc[df0.index] / close.loc[df0.values].values - 1
+    except KeyError as e:
+        raise KeyError("Mismatch in indices during return calculation.") from e
+
+    # Apply EWM for standard deviation (volatility)
+    daily_vol = daily_returns.ewm(span=span).std()
+    return daily_vol
 
 # def get_daily_volatility(close_prices, span=100):
 #     sorted_close = close_prices.sort_index()
