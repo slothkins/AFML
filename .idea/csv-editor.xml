@@ -31,7 +31,63 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="/tick_data/bars/volume_bars_barchart.csv">
+        <entry key="/concat_sorted.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/tick_data/ESZ4_raw_csv/ESZ4_tick_data01oct23oct.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/tick_data/ESZ4_raw_csv/ESZ4_tick_data01sep30sep.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/tick_data/ESZ4_raw_csv/ESZ4_tick_data07dec14dec.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/tick_data/ESZ4_raw_csv/ESZ4_tick_data08nov14nov.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/tick_data/ESZ4_raw_csv/ESZ4_tick_data16dec19dec.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/tick_data/ESZ4_raw_csv/ESZ4_tick_data20dec31dec.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/tick_data/ESZ4_raw_csv/ESZ4_tick_data23nov30nov.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/tick_data/concatenated_data.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
