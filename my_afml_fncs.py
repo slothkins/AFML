@@ -3,7 +3,7 @@ import time
 import datetime as dt
 from unittest import signals
 from tqdm import tqdm
-
+import matplotlib as mpl
 import pandas as pd
 import numpy as np
 import copyreg, types, multiprocessing as mp
@@ -365,7 +365,7 @@ def mpNumCoEvents(closeIdx, t1, molecule):
 
 
 def mpSampleTW(t1, numCoEvents, molecule):
-    #SNIPPET 4.2 ESTIMATING THE AVERAGE UNIQUENESS OF A LABEL
+    # SNIPPET 4.2 ESTIMATING THE AVERAGE UNIQUENESS OF A LABEL
     # Derive average uniqueness over the event's lifespan
     wght = pd.Series(index=molecule)
     for tIn, tOut in t1.loc[wght.index].items():
@@ -374,7 +374,7 @@ def mpSampleTW(t1, numCoEvents, molecule):
 
 
 def getIndMatrix(barIx, t1):
-    #SNIPPET 4.3 BUILD AN INDICATOR MATRIX
+    # SNIPPET 4.3 BUILD AN INDICATOR MATRIX
     # Get indicator matrix
     indM = pd.DataFrame(0, index=barIx, columns=range(t1.shape[0]))
     for i, (t0, t1) in enumerate(t1.items()): indM.loc[t0:t1, i] = 1.
@@ -382,7 +382,7 @@ def getIndMatrix(barIx, t1):
 
 
 def getAvgUniqueness(indM):
-    #SNIPPET 4.4 COMPUTE AVERAGE UNIQUENESS
+    # SNIPPET 4.4 COMPUTE AVERAGE UNIQUENESS
     # Average uniqueness from indicator matrix
     c = indM.sum(axis=1)  # concurrency
     u = indM.div(c, axis=0)  # uniqueness
@@ -391,7 +391,7 @@ def getAvgUniqueness(indM):
 
 
 def seqBootstrap(indM, sLength=None):
-    #SNIPPET 4.5 RETURN SAMPLE FROM SEQUENTIAL BOOTSTRAP
+    # SNIPPET 4.5 RETURN SAMPLE FROM SEQUENTIAL BOOTSTRAP
     # Generate a sample via sequential bootstrap
     if sLength is None: sLength = indM.shape[1]
     phi = []
@@ -408,7 +408,7 @@ def seqBootstrap(indM, sLength=None):
 
 
 def mpSampleW(t1, numCoEvents, close, molecule):
-    #SNIPPET 4.10 DETERMINATION OF SAMPLE WEIGHT BY ABSOLUTE RETURN ATTRIBUTION
+    # SNIPPET 4.10 DETERMINATION OF SAMPLE WEIGHT BY ABSOLUTE RETURN ATTRIBUTION
     # Derive sample weight by return attribution
     ret = np.log(close).diff()  # log-returns, so that they are additive
     wght = pd.Series(index=molecule)
@@ -418,7 +418,7 @@ def mpSampleW(t1, numCoEvents, close, molecule):
 
 
 def getTimeDecay(tW, clfLastW=1.):
-    #SNIPPET 4.11 IMPLEMENTATION OF TIME-DECAY FACTORS
+    # SNIPPET 4.11 IMPLEMENTATION OF TIME-DECAY FACTORS
     # apply piecewise-linear decay to observed uniqueness (tW)
     # newest observation gets weight=1, oldest observation gets weight=clfLastW
     clfW = tW.sort_index().cumsum()
@@ -432,3 +432,51 @@ def getTimeDecay(tW, clfLastW=1.):
     print
     const, slope
     return clfW
+
+
+def getWeights(d, size):
+    # thres>0 drops insignificant weights
+    w = [1.]
+    for k in range(1, size):
+        w_ = -w[-1] / k * (d - k + 1)
+    w.append(w_)
+    w = np.array(w[::-1]).reshape(-1, 1)
+    return w
+
+
+def plotWeights(dRange, nPlots, size):
+    w = pd.DataFrame()
+    for d in np.linspace(dRange[0], dRange[1], nPlots):
+        w_ = getWeights(d, size=size)
+    w_ = pd.DataFrame(w_, index=range(w_.shape[0])[::-1], columns=[d])
+    w = w.join(w_, how='outer')
+    ax = w.plot()
+    ax.legend(loc='upper left');
+    mpl.show()
+    return
+
+
+def fracDiff(series, d, thres=.01):
+    '''
+    Increasing width window, with treatment of NaNs
+    Note 1: For thres=1, nothing is skipped.
+    Note 2: d can be any positive fractional, not necessarily bounded [0,1].
+    '''
+    # 1) Compute weights for the longest series
+    w = getWeights(d, series.shape[0])
+    # 2) Determine initial calcs to be skipped based on weight-loss threshold
+    w_ = np.cumsum(abs(w))
+    w_ /= w_[-1]
+    skip = w_[w_ > thres].shape[0]
+    # 3) Apply weights to values
+    df = {}
+    for name in series.columns:
+        seriesF, df_ = series[[name]].fillna(method='ffill').dropna(), pd.Series()
+        for iloc in range(skip, seriesF.shape[0]):
+            loc = seriesF.index[iloc]
+            if not np.isfinite(series.loc[loc, name]): continue  # exclude NAs
+            df_[loc] = np.dot(w[-(iloc + 1):, :].T, seriesF.loc[:loc])[0, 0]
+        df[name] = df_.copy(deep=True)
+    df = pd.concat(df, axis=1)
+    return df
+
